@@ -16,9 +16,9 @@ import androidx.navigation.compose.composable
 import com.example.bean2.data.model.BrewingParams
 import com.example.bean2.data.model.CoffeeBag
 import com.example.bean2.data.model.CoffeeType
-import com.example.bean2.ui.screens.AddCoffeeBagScreen
 import com.example.bean2.ui.screens.CoffeeBagDetailScreen
 import com.example.bean2.ui.screens.CoffeeBagListScreen
+import com.example.bean2.ui.screens.EditCoffeeBagScreen
 import com.example.bean2.ui.viewmodel.CoffeeViewModel
 
 sealed class Screen(val route: String) {
@@ -26,7 +26,11 @@ sealed class Screen(val route: String) {
     object CoffeeBagDetail : Screen("coffee_bag_detail/{coffeeBagId}") {
         fun createRoute(coffeeBagId: String) = "coffee_bag_detail/$coffeeBagId"
     }
+
     object AddCoffeeBag : Screen("add_coffee_bag")
+    object EditCoffeeBag : Screen("edit_coffee_bag/{coffeeBagId}") {
+        fun createRoute(coffeeBagId: String) = "edit_coffee_bag/$coffeeBagId"
+    }
 }
 
 @Composable
@@ -42,7 +46,7 @@ fun NavGraph(
         composable(Screen.CoffeeBagList.route) {
             val uiState by viewModel.uiState.collectAsState()
             val selectedType by viewModel.selectedType.collectAsState()
-            
+
             CoffeeBagListScreen(
                 viewModel = viewModel,
                 onCoffeeBagClick = { coffeeBagId ->
@@ -56,20 +60,22 @@ fun NavGraph(
                 }
             )
         }
-        
+
         composable(Screen.CoffeeBagDetail.route) { backStackEntry ->
             val coffeeBagId = backStackEntry.arguments?.getString("coffeeBagId")
             LaunchedEffect(coffeeBagId) {
                 coffeeBagId?.let { viewModel.selectCoffeeBag(it) }
             }
-            
+
             val coffeeBag by viewModel.selectedCoffeeBag.collectAsState()
-            
+
             coffeeBag?.let { bag ->
                 CoffeeBagDetailScreen(
                     coffeeBag = bag,
                     onBackClick = { navController.navigateUp() },
-                    onEditClick = { /* TODO: Implement edit */ },
+                    onEditClick = {
+                        navController.navigate(Screen.EditCoffeeBag.createRoute(bag.id))
+                    },
                     onDeleteClick = {
                         viewModel.deleteCoffeeBag(bag.id)
                         navController.navigateUp()
@@ -85,9 +91,9 @@ fun NavGraph(
                 }
             }
         }
-        
+
         composable(Screen.AddCoffeeBag.route) {
-            AddCoffeeBagScreen(
+            EditCoffeeBagScreen(
                 onBackClick = { navController.navigateUp() },
                 onSaveClick = { name: String, roaster: String, type: CoffeeType, brewingParams: BrewingParams ->
                     viewModel.addCoffeeBag(
@@ -101,6 +107,40 @@ fun NavGraph(
                     navController.navigateUp()
                 }
             )
+        }
+
+        composable(Screen.EditCoffeeBag.route) { backStackEntry ->
+            val coffeeBagId = backStackEntry.arguments?.getString("coffeeBagId")
+
+            // Load the specific coffee bag when the screen is first shown
+            LaunchedEffect(coffeeBagId) { coffeeBagId?.let { viewModel.selectCoffeeBag(it) } }
+            val coffeeBag by viewModel.selectedCoffeeBag.collectAsState()
+
+            coffeeBag?.let { bag ->
+                EditCoffeeBagScreen(
+                    coffeeBag = bag,
+                    onBackClick = { navController.navigateUp() },
+                    onSaveClick = { name: String, roaster: String, type: CoffeeType, brewingParams: BrewingParams ->
+                        viewModel.updateCoffeeBag(
+                            bag.copy(
+                                name = name,
+                                roaster = roaster,
+                                type = type,
+                                brewingParams = brewingParams
+                            )
+                        )
+                        navController.navigateUp()
+                    }
+                )
+            } ?: run {
+                // Show loading or error state
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
     }
 }

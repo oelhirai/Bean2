@@ -37,28 +37,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.bean2.data.model.BrewingParams
+import com.example.bean2.data.model.CoffeeBag
 import com.example.bean2.data.model.CoffeeType
 import com.example.bean2.data.model.Dripper
+import com.example.bean2.extensions.getGrind
+import com.example.bean2.extensions.getRatio
+import com.example.bean2.extensions.getTemperature
 import com.example.bean2.ui.components.CoffeeTypeSelector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddCoffeeBagScreen(
+fun EditCoffeeBagScreen(
+    coffeeBag: CoffeeBag? = null,
     onBackClick: () -> Unit,
     onSaveClick: (String, String, CoffeeType, BrewingParams) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var roaster by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf<CoffeeType?>(null) }
+    val isEditMode = coffeeBag != null
+    var name by remember { mutableStateOf(coffeeBag?.name.orEmpty()) }
+    var roaster by remember { mutableStateOf(coffeeBag?.roaster.orEmpty()) }
+    var selectedType by remember { mutableStateOf<CoffeeType?>(coffeeBag?.type) }
 
     // Brewing parameters state
-    var temperature by remember { mutableStateOf("") }
-    var grindSize by remember { mutableStateOf("") }
-    var ratio by remember { mutableStateOf("") }
-    var dripper by remember { mutableStateOf(Dripper.V60) }
-    var yield by remember { mutableStateOf("") }
-    var extractionTime by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
+    var temperature by remember { 
+        mutableStateOf(coffeeBag?.getTemperature() ?: "")
+    }
+    var grindSize by remember { 
+        mutableStateOf(coffeeBag?.getGrind() ?: "")
+    }
+    var ratio by remember { 
+        mutableStateOf(coffeeBag?.getRatio() ?: "")
+    }
+    var dripper by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.PourOverParams)?.dripper ?: Dripper.V60) }
+    var yield by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.EspressoParams)?.yield ?: "") }
+    var extractionTime by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.EspressoParams)?.extractionTime?.toString() ?: "") }
+    var notes by remember { mutableStateOf(coffeeBag?.brewingParams?.notes ?: "") }
     var isDripperExpanded by remember { mutableStateOf(false) }
 
     val isFormValid = name.isNotBlank() &&
@@ -72,7 +84,7 @@ fun AddCoffeeBagScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Coffee Bag") },
+                title = { Text(if (isEditMode) "Edit Coffee Bag" else "Add Coffee Bag") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
@@ -104,6 +116,7 @@ fun AddCoffeeBagScreen(
                                     )
                                 }
                                 onSaveClick(name, roaster, type, brewingParams)
+                                onBackClick()
                             }
                         },
                         enabled = isFormValid
