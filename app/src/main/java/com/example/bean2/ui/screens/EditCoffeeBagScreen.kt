@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -64,9 +65,11 @@ fun EditCoffeeBagScreen(
     var grindSize by remember { 
         mutableStateOf(coffeeBag?.getGrind() ?: "")
     }
-    var ratio by remember { 
-        mutableStateOf(coffeeBag?.getRatio() ?: "")
-    }
+    // Parse the existing ratio or default to 15
+    val defaultRatio = coffeeBag?.getRatio()?.substringAfter(":")?.toIntOrNull() ?: 15
+    var selectedRatio by remember { mutableStateOf(defaultRatio.coerceIn(1, 20)) }
+    var isRatioExpanded by remember { mutableStateOf(false) }
+
     var dripper by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.PourOverParams)?.dripper ?: Dripper.V60) }
     var yield by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.EspressoParams)?.yield ?: "") }
     var extractionTime by remember { mutableStateOf((coffeeBag?.brewingParams as? BrewingParams.EspressoParams)?.extractionTime?.toString() ?: "") }
@@ -78,7 +81,7 @@ fun EditCoffeeBagScreen(
             selectedType != null &&
             temperature.isNotBlank() &&
             grindSize.isNotBlank() &&
-            ratio.isNotBlank() &&
+            selectedRatio in 1..20 &&
             (selectedType != CoffeeType.ESPRESSO || (yield.isNotBlank() && extractionTime.isNotBlank()))
 
     Scaffold(
@@ -101,7 +104,7 @@ fun EditCoffeeBagScreen(
                                     CoffeeType.POUROVER -> BrewingParams.PourOverParams(
                                         temperature = temperature.toIntOrNull() ?: 0,
                                         grindSize = grindSize,
-                                        ratio = ratio,
+                                        ratio = "1:${selectedRatio}",
                                         dripper = dripper,
                                         notes = notes
                                     )
@@ -109,7 +112,7 @@ fun EditCoffeeBagScreen(
                                     CoffeeType.ESPRESSO -> BrewingParams.EspressoParams(
                                         temperature = temperature.toIntOrNull() ?: 0,
                                         grindSize = grindSize,
-                                        ratio = ratio,
+                                        ratio = "1:${selectedRatio}",
                                         yield = yield,
                                         extractionTime = extractionTime.toIntOrNull() ?: 0,
                                         notes = notes
@@ -197,12 +200,54 @@ fun EditCoffeeBagScreen(
                     )
 
                     // Ratio
-                    OutlinedTextField(
-                        value = ratio,
-                        onValueChange = { ratio = it },
-                        label = { Text("Coffee to Water Ratio (e.g., 1:15)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Coffee to Water Ratio",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "1:",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                            ExposedDropdownMenuBox(
+                                expanded = isRatioExpanded,
+                                onExpandedChange = { isRatioExpanded = it },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                TextField(
+                                    value = selectedRatio.toString(),
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = isRatioExpanded)
+                                    },
+                                    modifier = Modifier.menuAnchor()
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = isRatioExpanded,
+                                    onDismissRequest = { isRatioExpanded = false }
+                                ) {
+                                    (1..20).forEach { number ->
+                                        DropdownMenuItem(
+                                            text = { Text(number.toString()) },
+                                            onClick = {
+                                                selectedRatio = number
+                                                isRatioExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     // Dripper (only for pour over)
                     if (selectedType == CoffeeType.POUROVER) {

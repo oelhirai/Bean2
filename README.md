@@ -44,7 +44,6 @@ Bean2 is an Android application built with Jetpack Compose that helps coffee ent
 ### Features to Add
 
 1. **Coffee Bag Management**
-   - Ability to edit existing coffee bags
    - Dropdown selection for common coffee-to-water ratios
    - Backup and restore functionality
      - Export coffee bag data to a backup file
